@@ -1,19 +1,10 @@
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
-public class ProofsController : ControllerBase
+public class ProofsController : BaseController
 {
-    private readonly IMediator _mediator;
-
-    public ProofsController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     // TODO: Implement endpoints
     // [HttpGet("{accountId}")]
     // [HttpPost]

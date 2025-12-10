@@ -1,19 +1,10 @@
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
-public class VerificationRequestsController : ControllerBase
+public class VerificationRequestsController : BaseController
 {
-    private readonly IMediator _mediator;
-
-    public VerificationRequestsController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     // TODO: Implement endpoints
     // [HttpGet]
     // [HttpGet("{id}")]

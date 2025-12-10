@@ -1,4 +1,5 @@
 using Application;
+using Application.Common.Exceptions;
 using FluentValidation;
 using Infrastructure;
 using Microsoft.AspNetCore.Diagnostics;
@@ -41,6 +42,16 @@ app.UseExceptionHandler(errorApp =>
             {
                 errors = errors,
                 message = "Validation failed"
+            });
+        }
+        else if (exception is NotFoundException notFoundException)
+        {
+            context.Response.StatusCode = 404;
+            context.Response.ContentType = "application/json";
+
+            await context.Response.WriteAsJsonAsync(new
+            {
+                message = notFoundException.Message
             });
         }
     });

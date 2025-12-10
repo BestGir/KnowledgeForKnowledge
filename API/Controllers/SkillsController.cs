@@ -1,24 +1,15 @@
 using Application.Features.Skills.Commands.CreateSkill;
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
-public class SkillsController : ControllerBase
+public class SkillsController : BaseController
 {
-    private readonly IMediator _mediator;
-
-    public SkillsController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     [HttpPost]
     public async Task<ActionResult<Guid>> CreateSkill([FromBody] CreateSkillCommand command)
     {
-        var skillId = await _mediator.Send(command);
+        var skillId = await Mediator.Send(command);
         return Ok(skillId);
     }
 

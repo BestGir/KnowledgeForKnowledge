@@ -2,7 +2,7 @@ using MediatR;
 
 namespace Application.Features.Accounts.Queries.GetAccount;
 
-public class GetAccountQuery : IRequest<AccountDto?>
+public class GetAccountQuery : IRequest<AccountDto>
 {
     public Guid AccountID { get; set; }
 }

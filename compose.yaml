@@ -23,15 +23,5 @@
     depends_on:
       - postgres
 
-  gateway:
-    image: gateway
-    build:
-      context: .
-      dockerfile: GatewayApi/Dockerfile
-    ports:
-      - "5000:8080"
-    depends_on:
-      - api
-
 volumes:
   postgres_data:

@@ -9,18 +9,16 @@
 - **Domain** - Доменный слой с сущностями, перечислениями и интерфейсами
 - **Application** - Слой приложения с MediatR командами/запросами и FluentValidation валидаторами
 - **Infrastructure** - Слой инфраструктуры с EF Core, PostgreSQL и репозиториями
-- **API** - Слой представления с контроллерами
-- **GatewayApi** - API Gateway для маршрутизации запросов
+- **API** - Слой представления с контроллерами (все запросы проходят через MediatR)
 
 ## Технологии
 
 - .NET 9.0
 - ASP.NET Core
-- MediatR
+- MediatR (CQRS паттерн)
 - FluentValidation
 - Entity Framework Core
 - PostgreSQL
-- YARP (Yet Another Reverse Proxy) для Gateway
 
 ## Структура базы данных
 
@@ -55,10 +53,8 @@ docker-compose up -d
    ```
    dotnet run --project API
    ```
-5. Запустите Gateway:
-   ```
-   dotnet run --project GatewayApi
-   ```
+   
+   API будет доступен по адресу: `https://localhost:5001` или `http://localhost:5000`
 
 ## Миграции
 
@@ -76,23 +72,11 @@ dotnet ef database update --project Infrastructure --startup-project API
 
 Проект настроен для работы с Git. Для инициализации репозитория:
 
-### Быстрый способ:
-```powershell
-# PowerShell
-.\init-git.ps1
-
-# Или CMD
-init-git.bat
-```
-
-### Вручную:
 ```powershell
 git init
 git add .
 git commit -m "Initial commit: Clean Architecture setup"
 ```
-
-Подробные инструкции см. в [GIT_SETUP.md](GIT_SETUP.md)
 
 ### Что настроено:
 - `.gitignore` - игнорирует файлы сборки, IDE, временные файлы
