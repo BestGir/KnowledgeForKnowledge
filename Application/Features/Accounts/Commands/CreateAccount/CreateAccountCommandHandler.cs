@@ -7,23 +7,24 @@ namespace Application.Features.Accounts.Commands.CreateAccount;
 public class CreateAccountCommandHandler : IRequestHandler<CreateAccountCommand, Guid>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IPasswordHasher _passwordHasher;
 
-    public CreateAccountCommandHandler(IApplicationDbContext context)
+    public CreateAccountCommandHandler(IApplicationDbContext context, IPasswordHasher passwordHasher)
     {
         _context = context;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<Guid> Handle(CreateAccountCommand request, CancellationToken cancellationToken)
     {
-        // TODO: Implement password hashing
         var account = new Account
         {
-            AccountID = Guid.NewGuid(),
-            Login = request.Login,
-            PasswordHash = request.Password, // TODO: Hash password
-            TelegramID = request.TelegramID,
-            IsAdmin = false,
-            CreatedAt = DateTime.UtcNow
+            AccountID   = Guid.NewGuid(),
+            Login       = request.Login,
+            PasswordHash = _passwordHasher.Hash(request.Password),
+            TelegramID  = request.TelegramID,
+            IsAdmin     = false,
+            CreatedAt   = DateTime.UtcNow
         };
 
         _context.Accounts.Add(account);
@@ -32,5 +33,3 @@ public class CreateAccountCommandHandler : IRequestHandler<CreateAccountCommand,
         return account.AccountID;
     }
 }
-
-

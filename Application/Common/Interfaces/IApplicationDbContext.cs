@@ -14,8 +14,10 @@ public interface IApplicationDbContext
     DbSet<SkillOffer> SkillOffers { get; }
     DbSet<SkillRequest> SkillRequests { get; }
     DbSet<VerificationRequest> VerificationRequests { get; }
+    DbSet<Domain.Entities.Application> Applications { get; }
+    DbSet<Deal> Deals { get; }
+    DbSet<Review> Reviews { get; }
+    DbSet<Notification> Notifications { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
-
-

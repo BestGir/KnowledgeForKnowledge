@@ -9,10 +9,9 @@ public class VerificationRequest
     public Guid? ProofID { get; set; }
     public VerificationRequestType RequestType { get; set; }
     public VerificationStatus Status { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     public Account Account { get; set; } = null!;
     public Proof? Proof { get; set; }
 }
-
-

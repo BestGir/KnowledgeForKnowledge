@@ -13,6 +13,7 @@ public class AccountDto
     public string Login { get; set; } = string.Empty;
     public string? TelegramID { get; set; }
     public bool IsAdmin { get; set; }
+    public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

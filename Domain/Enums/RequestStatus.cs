@@ -4,7 +4,8 @@ public enum RequestStatus
 {
     Open,
     Fulfilled,
-    Closed
+    Closed,
+    OnHold
 }
 
 

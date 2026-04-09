@@ -24,6 +24,7 @@ public class GetAccountQueryHandler : IRequestHandler<GetAccountQuery, AccountDt
                 Login = a.Login,
                 TelegramID = a.TelegramID,
                 IsAdmin = a.IsAdmin,
+                IsActive = a.IsActive,
                 CreatedAt = a.CreatedAt
             })
             .FirstOrDefaultAsync(cancellationToken);
