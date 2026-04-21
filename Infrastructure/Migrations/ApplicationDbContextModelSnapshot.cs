@@ -431,10 +431,18 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("SkillID")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<bool>("IsVerified")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
+
+                    b.Property<string>("LearnedAt")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<int>("SkillLevel")
                         .HasColumnType("integer");
