@@ -228,7 +228,6 @@ export function ProfilePage() {
             <div className="detail-panel">
               <span className="eyebrow">Метаданные</span>
               <p>Дата рождения: {formatDateOnly(profileState.data.dateOfBirth)}</p>
-              <p>Последняя активность: {formatDate(profileState.data.lastSeenOnline)}</p>
               <p>Отзывы: {reviewsState.data?.averageRating.toFixed(1) ?? '0.0'} / 5</p>
             </div>
           </div>

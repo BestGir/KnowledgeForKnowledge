@@ -268,7 +268,6 @@ function MyListingsContent({ session }: { session: Session }) {
       <Surface className="dashboard-hero">
         <div className="hero-grid hero-grid--compact">
           <div className="hero-copy">
-            <p className="eyebrow">Workspace</p>
             <h1>Мои предложения и запросы</h1>
             <p className="hero-text">
               Здесь живут только твои карточки: можно создать новое предложение, оформить запрос на помощь и удалить то,

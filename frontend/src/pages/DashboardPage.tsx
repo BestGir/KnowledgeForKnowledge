@@ -489,7 +489,6 @@ function DashboardContent({ session }: { session: Session }) {
       <Surface className="dashboard-hero">
         <div className="hero-grid hero-grid--compact">
           <div className="hero-copy">
-            <p className="eyebrow">Workspace</p>
             <h1>Личный кабинет пользователя</h1>
             <p className="hero-text">
               Здесь заполняется только то, что описывает твою публичную карточку: профиль, навыки и образование.

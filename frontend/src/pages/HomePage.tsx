@@ -27,7 +27,6 @@ export function HomePage() {
       <Surface className="hero-panel">
         <div className="hero-grid">
           <div className="hero-copy">
-            <p className="eyebrow">Knowledge exchange platform</p>
             <h1>Платформа для обмена знаниями и поиска людей по навыкам</h1>
             <p className="hero-text">
               KnowledgeForKnowledge помогает находить людей, которые готовы обучить навыку, принять помощь или договориться об обмене. В профиле видны навыки, образование, отзывы и подтверждения, а в каталоге можно быстро найти подходящие запросы и предложения.
