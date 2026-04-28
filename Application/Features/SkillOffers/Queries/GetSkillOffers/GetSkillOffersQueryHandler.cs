@@ -9,6 +9,20 @@ namespace Application.Features.SkillOffers.Queries.GetSkillOffers;
 public class GetSkillOffersQueryHandler : IRequestHandler<GetSkillOffersQuery, PagedResult<SkillOfferDto>>
 {
     private readonly IApplicationDbContext _context;
+    private static readonly IReadOnlyDictionary<SkillEpithet, string[]> EpithetSearchTerms =
+        new Dictionary<SkillEpithet, string[]>
+        {
+            [SkillEpithet.IT] = ["it", "ит", "айти", "программирование", "разработка"],
+            [SkillEpithet.Design] = ["design", "дизайн"],
+            [SkillEpithet.Cooking] = ["cooking", "кулинария", "готовка"],
+            [SkillEpithet.Language] = ["language", "язык", "языки"],
+            [SkillEpithet.Music] = ["music", "музыка"],
+            [SkillEpithet.Sports] = ["sports", "спорт"],
+            [SkillEpithet.Business] = ["business", "бизнес"],
+            [SkillEpithet.Education] = ["education", "образование", "обучение"],
+            [SkillEpithet.Healthcare] = ["healthcare", "здоровье", "медицина"],
+            [SkillEpithet.Other] = ["other", "другое"],
+        };
 
     public GetSkillOffersQueryHandler(IApplicationDbContext context)
     {
@@ -29,16 +43,45 @@ public class GetSkillOffersQueryHandler : IRequestHandler<GetSkillOffersQuery, P
         if (request.AccountID.HasValue)
             query = query.Where(offer => offer.AccountID == request.AccountID.Value);
 
+        if (request.ExcludeAccountID.HasValue)
+            query = query.Where(offer => offer.AccountID != request.ExcludeAccountID.Value);
+
         if (request.IsActive.HasValue)
             query = query.Where(offer => offer.IsActive == request.IsActive.Value);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
-            var search = request.Search.ToLower();
+            var search = request.Search.Trim().ToLower();
+            var epithetMatches = ResolveEpithetMatches(search);
+            var searchTextFields = search.Length >= 3;
             query = query.Where(offer =>
-                offer.Title.ToLower().Contains(search) ||
-                (offer.Details != null && offer.Details.ToLower().Contains(search)) ||
-                offer.SkillsCatalog.SkillName.ToLower().Contains(search));
+                offer.SkillsCatalog.SkillName.ToLower().Contains(search) ||
+                epithetMatches.Contains(offer.SkillsCatalog.Epithet) ||
+                (searchTextFields &&
+                    (offer.Title.ToLower().Contains(search) ||
+                     (offer.Details != null && offer.Details.ToLower().Contains(search)) ||
+                     (offer.Account.UserProfile != null && offer.Account.UserProfile.FullName.ToLower().Contains(search)) ||
+                     offer.Account.Login.ToLower().Contains(search))));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AuthorSearch))
+        {
+            var authorSearch = request.AuthorSearch.Trim().ToLower();
+            query = query.Where(offer =>
+                (offer.Account.UserProfile != null && offer.Account.UserProfile.FullName.ToLower().Contains(authorSearch)) ||
+                offer.Account.Login.ToLower().Contains(authorSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.TitleSearch))
+        {
+            var titleSearch = request.TitleSearch.Trim().ToLower();
+            query = query.Where(offer => offer.Title.ToLower().Contains(titleSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.EpithetSearch))
+        {
+            var epithetMatches = ResolveEpithetMatches(request.EpithetSearch.Trim().ToLower());
+            query = query.Where(offer => epithetMatches.Contains(offer.SkillsCatalog.Epithet));
         }
 
         if (request.ViewerAccountID.HasValue && request.ViewerHasSkill.HasValue)
@@ -82,11 +125,20 @@ public class GetSkillOffersQueryHandler : IRequestHandler<GetSkillOffersQuery, P
                 offer.Account.UserProfile != null ? offer.Account.UserProfile.PhotoURL : null,
                 offer.SkillID,
                 offer.SkillsCatalog.SkillName,
+                offer.SkillsCatalog.Epithet,
                 offer.Title,
                 offer.Details,
                 offer.IsActive))
             .ToListAsync(cancellationToken);
 
         return PagedResult<SkillOfferDto>.Create(items, total, request.Page, request.PageSize);
+    }
+
+    private static SkillEpithet[] ResolveEpithetMatches(string search)
+    {
+        return EpithetSearchTerms
+            .Where(pair => pair.Value.Any(term => term.Contains(search) || search.Contains(term)))
+            .Select(pair => pair.Key)
+            .ToArray();
     }
 }

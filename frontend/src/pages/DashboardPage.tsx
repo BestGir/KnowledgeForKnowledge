@@ -3,23 +3,18 @@ import { Link } from 'react-router-dom';
 
 import { useAuth } from '../auth/useAuth';
 import { SkillPicker } from '../components/SkillPicker';
-import { Avatar, EmptyState, LoadingBlock, Notice, StatusTag, Surface } from '../components/Ui';
+import { Avatar, EmptyState, LoadingBlock, Notice, Pagination, StatusTag, Surface } from '../components/Ui';
 import {
   addEducation,
   addUserSkill,
-  createSkill,
-  deleteSkillRequest,
   deleteEducation,
-  getCurrentAccount,
   getEducations,
   getProfile,
   getProofs,
-  getSkillRequests,
   getSkills,
   getUserSkills,
   getVerificationRequests,
   removeUserSkill,
-  reviewVerificationRequest,
   resolveAssetUrl,
   submitVerificationRequest,
   upsertProfile,
@@ -28,19 +23,15 @@ import {
 } from '../lib/api';
 import {
   formatDate,
-  formatRequestStatus,
-  formatSkillEpithet,
   formatSkillLevel,
   formatVerificationRequestType,
   formatVerificationStatus,
 } from '../lib/format';
 import { normalizeTelegramContact } from '../lib/telegram';
-import { skillEpithetOptions, skillLevelOptions, type Session } from '../lib/types';
+import { skillLevelOptions, type Session } from '../lib/types';
 import { useAsyncData } from '../lib/useAsyncData';
 import {
   currentYear,
-  emptySkillRequestsPage,
-  getVerificationTone,
   maxBirthDate,
   maxEducationYear,
   maxProfileContactLength,
@@ -52,12 +43,13 @@ import {
   validateProfilePhotoFile,
   validateSelectedProofFiles,
   verificationRequestTypeSkill,
-  verificationStatusApproved,
   verificationStatusPending,
   verificationStatusRejected,
+  getVerificationTone,
 } from './dashboard/dashboardValidation';
 
 type NoticeState = { message: string; tone: 'danger' | 'info' | 'success' } | null;
+const dashboardSkillsPageSize = 4;
 
 export function DashboardPage() {
   const { session } = useAuth();
@@ -86,6 +78,7 @@ function DashboardContent({ session }: { session: Session }) {
   const [refreshToken, setRefreshToken] = useState(0);
   const [notice, setNotice] = useState<NoticeState>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [skillPage, setSkillPage] = useState(1);
   const [profileForm, setProfileForm] = useState({
     contactInfo: '',
     dateOfBirth: '',
@@ -108,21 +101,12 @@ function DashboardContent({ session }: { session: Session }) {
     institutionName: '',
     yearCompleted: '',
   });
-  const [adminSkillForm, setAdminSkillForm] = useState({
-    epithet: 0,
-    skillName: '',
-  });
-
-  const accountState = useAsyncData([session.accountId, refreshToken], () => getCurrentAccount(session.token));
   const profileState = useAsyncData([session.accountId, refreshToken], () => getProfile(session.accountId, session.token));
   const catalogState = useAsyncData([refreshToken], () => getSkills({ pageSize: 500 }));
   const userSkillsState = useAsyncData([session.accountId, refreshToken], () => getUserSkills(session.accountId, session.token));
   const proofsState = useAsyncData([session.accountId, refreshToken], () => getProofs(session.accountId, session.token));
-  const verificationRequestsState = useAsyncData([session.accountId, session.isAdmin, refreshToken], () =>
-    getVerificationRequests(session.token, session.isAdmin ? { pageSize: 40 } : { accountId: session.accountId, pageSize: 40 }),
-  );
-  const adminRequestsState = useAsyncData([session.isAdmin, refreshToken], () =>
-    session.isAdmin ? getSkillRequests({ pageSize: 24 }) : Promise.resolve(emptySkillRequestsPage),
+  const verificationRequestsState = useAsyncData([session.accountId, refreshToken], () =>
+    getVerificationRequests(session.token, { accountId: session.accountId, pageSize: 40 }),
   );
   const educationState = useAsyncData([session.accountId, refreshToken], () => getEducations(session.accountId, session.token));
 
@@ -216,6 +200,15 @@ function DashboardContent({ session }: { session: Session }) {
   const isEditingExistingSkill = selectedExistingSkill !== null;
   const profileImageUrl = profileForm.photoUrl ? resolveAssetUrl(profileForm.photoUrl) : '';
   const profileDisplayName = profileForm.fullName.trim() || profileState.data?.fullName || 'Профиль';
+  const userSkills = userSkillsState.data ?? [];
+  const skillTotalPages = Math.max(1, Math.ceil(userSkills.length / dashboardSkillsPageSize));
+  const pagedSkills = userSkills.slice((skillPage - 1) * dashboardSkillsPageSize, skillPage * dashboardSkillsPageSize);
+
+  useEffect(() => {
+    if (skillPage > skillTotalPages) {
+      setSkillPage(skillTotalPages);
+    }
+  }, [skillPage, skillTotalPages]);
 
   function resetSkillForm() {
     setSkillForm({
@@ -458,32 +451,6 @@ function DashboardContent({ session }: { session: Session }) {
     }, 'Запись об образовании сохранена.');
   }
 
-  async function handleAdminSkillCreate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const normalizedSkillName = adminSkillForm.skillName.trim();
-
-    if (!normalizedSkillName) {
-      setNotice({
-        message: 'Для каталога навыков нужно указать название.',
-        tone: 'danger',
-      });
-      return;
-    }
-
-    await runAction('admin-skill-create', async () => {
-      await createSkill(session.token, {
-        epithet: adminSkillForm.epithet,
-        skillName: normalizedSkillName,
-      });
-
-      setAdminSkillForm({
-        epithet: 0,
-        skillName: '',
-      });
-    }, 'Новый навык добавлен в каталог.');
-  }
-
   return (
     <div className="page-stack">
       <Surface className="dashboard-hero">
@@ -506,7 +473,6 @@ function DashboardContent({ session }: { session: Session }) {
               <Link className="button button--ghost" to={`/profile/${session.accountId}`}>
                 Публичный профиль
               </Link>
-              <StatusTag label={accountState.data?.isAdmin ? 'Admin' : 'Member'} tone="accent" />
             </div>
           </div>
         </div>
@@ -671,9 +637,9 @@ function DashboardContent({ session }: { session: Session }) {
         <Surface description="Навыки пользователя, их уровень и краткий контекст." title="Мои навыки">
           {userSkillsState.loading ? (
             <LoadingBlock label="Загружаем навыки..." />
-          ) : userSkillsState.data && userSkillsState.data.length > 0 ? (
+          ) : userSkills.length > 0 ? (
             <div className="skill-grid">
-              {userSkillsState.data.map((skill) => {
+              {pagedSkills.map((skill) => {
                 const skillProofs = getProofsForSkill(skill.skillId);
                 const isCurrentSkillEditing = skill.skillId === skillForm.skillId && isEditingExistingSkill;
 
@@ -766,6 +732,7 @@ function DashboardContent({ session }: { session: Session }) {
                   </article>
                 );
               })}
+              <Pagination onPageChange={setSkillPage} page={skillPage} totalPages={skillTotalPages} />
             </div>
           ) : (
             <EmptyState
@@ -871,168 +838,6 @@ function DashboardContent({ session }: { session: Session }) {
         </Surface>
       </div>
 
-      {session.isAdmin ? (
-        <>
-          <div className="content-grid content-grid--wide">
-            <Surface
-              description="Только администратор может одобрять или отклонять пруфы пользователей."
-              title="Админ: Проверка пруфов"
-            >
-              {verificationRequestsState.loading ? (
-                <LoadingBlock label="Загружаем заявки на проверку..." />
-              ) : verificationRequestsState.data && verificationRequestsState.data.items.length > 0 ? (
-                <div className="list-stack">
-                  {verificationRequestsState.data.items.map((request) => (
-                    <article className="list-card" key={request.requestId}>
-                      <div className="list-card-top">
-                        <div>
-                          <strong>{request.accountName}</strong>
-                          <span className="meta-line">
-                            {formatVerificationRequestType(request.requestType)}
-                            {request.skillName ? ` · ${request.skillName}` : ''}
-                          </span>
-                        </div>
-                        <StatusTag label={formatVerificationStatus(request.status)} tone={getVerificationTone(request.status)} />
-                      </div>
-                      <p className="meta-line">Подана: {formatDate(request.createdAt)}</p>
-                      {request.proofFileUrl ? (
-                        <div className="button-row">
-                          <a className="button button--ghost" href={resolveAssetUrl(request.proofFileUrl)} rel="noreferrer" target="_blank">
-                            Открыть пруф
-                          </a>
-                          {request.status === verificationStatusPending ? (
-                            <>
-                              <button
-                                className="button button--primary"
-                                onClick={() =>
-                                  runAction(
-                                    `verification-approve-${request.requestId}`,
-                                    () => reviewVerificationRequest(session.token, request.requestId, verificationStatusApproved),
-                                    'Пруф подтверждён администратором.',
-                                  )
-                                }
-                                type="button"
-                              >
-                                Подтвердить
-                              </button>
-                              <button
-                                className="button button--ghost"
-                                onClick={() =>
-                                  runAction(
-                                    `verification-reject-${request.requestId}`,
-                                    () => reviewVerificationRequest(session.token, request.requestId, verificationStatusRejected),
-                                    'Пруф отклонён.',
-                                  )
-                                }
-                                type="button"
-                              >
-                                Отклонить
-                              </button>
-                            </>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <p className="meta-line">К этой заявке не приложен файл-пруф.</p>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState description="Сейчас у админа нет заявок на проверку." title="Очередь пуста" />
-              )}
-            </Surface>
-
-            <Surface
-              description="Админ может расширять общий каталог навыков для всех пользователей."
-              title="Админ: Каталог навыков"
-            >
-              <form className="form-grid" onSubmit={handleAdminSkillCreate}>
-                <label>
-                  <span>Название навыка</span>
-                  <input
-                    onChange={(event) => setAdminSkillForm((current) => ({ ...current, skillName: event.target.value }))}
-                    placeholder="Например: Node.js, Blender, Academic Writing"
-                    value={adminSkillForm.skillName}
-                  />
-                </label>
-                <label>
-                  <span>Категория</span>
-                  <select
-                    onChange={(event) => setAdminSkillForm((current) => ({ ...current, epithet: Number(event.target.value) }))}
-                    value={adminSkillForm.epithet}
-                  >
-                    {skillEpithetOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button className="button button--primary" disabled={busyAction === 'admin-skill-create'} type="submit">
-                  {busyAction === 'admin-skill-create' ? 'Добавляем...' : 'Добавить навык в каталог'}
-                </button>
-              </form>
-
-              {catalogState.data?.items.length ? (
-                <div className="chip-cloud">
-                  {catalogState.data.items.slice(0, 10).map((skill) => (
-                    <div className="skill-chip" key={skill.skillId}>
-                      <strong>{skill.skillName}</strong>
-                      <span>{formatSkillEpithet(skill.epithet)}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </Surface>
-          </div>
-
-          <Surface
-            description="Администратор может удалить любую карточку запроса, если она ошибочна или больше не нужна."
-            title="Админ: Запросы пользователей"
-          >
-            {adminRequestsState.loading ? (
-              <LoadingBlock label="Загружаем карточки запросов..." />
-            ) : adminRequestsState.data && adminRequestsState.data.items.length > 0 ? (
-              <div className="list-stack">
-                {adminRequestsState.data.items.map((request) => (
-                  <article className="list-card" key={request.requestId}>
-                    <div className="list-card-top">
-                      <div>
-                        <strong>{request.title}</strong>
-                        <span className="meta-line">
-                          {request.authorName} · {request.skillName}
-                        </span>
-                      </div>
-                      <StatusTag label={formatRequestStatus(request.status)} tone="accent" />
-                    </div>
-                    <p>{request.details || 'Автор не добавил описание.'}</p>
-                    <div className="button-row">
-                      <Link className="button button--ghost" to={`/profile/${request.accountId}`}>
-                        Открыть автора
-                      </Link>
-                      <button
-                        className="button button--ghost"
-                        onClick={() =>
-                          runAction(
-                            `admin-request-delete-${request.requestId}`,
-                            () => deleteSkillRequest(session.token, request.requestId),
-                            'Карточка запроса удалена администратором.',
-                          )
-                        }
-                        type="button"
-                      >
-                        Удалить карточку
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <EmptyState description="В системе пока нет запросов на изучение навыков." title="Карточек нет" />
-            )}
-          </Surface>
-        </>
-      ) : null}
     </div>
   );
 }

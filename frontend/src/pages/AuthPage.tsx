@@ -11,7 +11,7 @@ type NoticeState = { message: string; tone: 'danger' | 'info' | 'success' } | nu
 type PendingTelegramLink = { token: string; url: string } | null;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const telegramBotUsername = 'Penis_Detrov_hui_bot';
+const telegramBotUsername = 'KnowledgeForKnowledge_bot';
 
 function validateEmail(email: string) {
   return emailPattern.test(email.trim());
@@ -535,13 +535,6 @@ export function AuthPage() {
               <a className="button button--ghost" href={pendingTelegramLink.url} rel="noreferrer" target="_blank">
                 Открыть бота
               </a>
-              <button
-                className="button button--ghost"
-                onClick={() => navigator.clipboard?.writeText(`/start ${pendingTelegramLink.token}`)}
-                type="button"
-              >
-                Скопировать команду
-              </button>
               <button className="button button--primary" disabled={busy} onClick={handleTelegramLinkOtpRequest} type="button">
                 {busy ? 'Запрашиваем код...' : 'Я нажал Start, запросить код'}
               </button>

@@ -26,14 +26,47 @@ public class GetReviewsQueryHandler : IRequestHandler<GetReviewsQuery, GetReview
         var items = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(r => new ReviewSummaryDto(
+            .Select(r => new
+            {
                 r.ReviewID,
                 r.DealID,
                 r.AuthorID,
-                r.Author.UserProfile != null ? r.Author.UserProfile.FullName : r.Author.Login,
+                AuthorName = r.Author.UserProfile != null ? r.Author.UserProfile.FullName : r.Author.Login,
+                SkillInfo = _context.Applications
+                    .Where(application =>
+                        application.ApplicationID ==
+                        _context.Deals
+                            .Where(deal => deal.DealID == r.DealID)
+                            .Select(deal => deal.ApplicationID)
+                            .FirstOrDefault())
+                    .Select(application => new
+                    {
+                        SkillID = application.SkillOffer != null
+                            ? (Guid?)application.SkillOffer.SkillID
+                            : application.SkillRequest != null
+                                ? (Guid?)application.SkillRequest.SkillID
+                                : null,
+                        SkillName = application.SkillOffer != null
+                            ? application.SkillOffer.SkillsCatalog.SkillName
+                            : application.SkillRequest != null
+                                ? application.SkillRequest.SkillsCatalog.SkillName
+                                : null,
+                    })
+                    .FirstOrDefault(),
                 r.Rating,
                 r.Comment,
-                r.CreatedAt))
+                r.CreatedAt,
+            })
+            .Select(review => new ReviewSummaryDto(
+                review.ReviewID,
+                review.DealID,
+                review.AuthorID,
+                review.AuthorName,
+                review.SkillInfo != null ? review.SkillInfo.SkillID : null,
+                review.SkillInfo != null ? review.SkillInfo.SkillName : null,
+                review.Rating,
+                review.Comment,
+                review.CreatedAt))
             .ToListAsync(cancellationToken);
 
         var totalPages = (int)Math.Ceiling(total / (double)request.PageSize);

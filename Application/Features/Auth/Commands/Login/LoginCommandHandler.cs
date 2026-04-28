@@ -76,6 +76,18 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
             account.LockoutUntil = null;
         }
 
+        if (string.IsNullOrEmpty(account.TelegramID) && !string.IsNullOrWhiteSpace(account.TelegramLinkToken))
+        {
+            var resolvedTelegramId =
+                await _telegram.TryResolveChatIdByStartTokenAsync(account.TelegramLinkToken, cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(resolvedTelegramId))
+            {
+                account.TelegramID = resolvedTelegramId;
+                account.TelegramLinkToken = null;
+            }
+        }
+
         if (string.IsNullOrEmpty(account.TelegramID))
         {
             account.TelegramLinkToken ??= await GenerateUniqueTelegramLinkToken(cancellationToken);
@@ -96,7 +108,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
             TimeSpan.FromMinutes(5));
 
         await _context.SaveChangesAsync(cancellationToken);
-        await _telegram.SendOtpAsync(account.TelegramID, code, cancellationToken);
+        var otpSent = await _telegram.SendOtpAsync(account.TelegramID, code, cancellationToken);
+        if (!otpSent)
+            throw new InvalidOperationException("Не удалось отправить код в Telegram. Проверьте, что бот запущен, и попробуйте снова.");
 
         return new LoginResult(string.Empty, account.AccountID, account.IsAdmin,
             RequiresOtp: true, SessionId: sessionId);

@@ -25,8 +25,12 @@ public class SkillRequestsController : BaseController
     public async Task<IActionResult> GetRequests(
         [FromQuery] Guid? skillId,
         [FromQuery] Guid? accountId,
+        [FromQuery] Guid? excludeAccountId,
         [FromQuery] RequestStatus? status,
         [FromQuery] string? search,
+        [FromQuery] string? authorSearch,
+        [FromQuery] string? titleSearch,
+        [FromQuery] string? epithetSearch,
         [FromQuery] Guid? helperAccountId,
         [FromQuery] bool? canHelp,
         [FromQuery] bool? requireBarter,
@@ -34,7 +38,20 @@ public class SkillRequestsController : BaseController
         [FromQuery] int pageSize = 20)
     {
         var result = await Mediator.Send(
-            new GetSkillRequestsQuery(skillId, accountId, status, search, helperAccountId, canHelp, requireBarter, page, pageSize));
+            new GetSkillRequestsQuery(
+                skillId,
+                accountId,
+                status,
+                search,
+                helperAccountId,
+                canHelp,
+                requireBarter,
+                page,
+                pageSize,
+                AuthorSearch: authorSearch,
+                TitleSearch: titleSearch,
+                EpithetSearch: epithetSearch,
+                ExcludeAccountID: excludeAccountId));
         return Ok(result);
     }
 

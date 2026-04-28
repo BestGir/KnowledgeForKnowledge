@@ -9,6 +9,8 @@ public record ReviewSummaryDto(
     Guid DealID,
     Guid AuthorID,
     string AuthorName,
+    Guid? SkillID,
+    string? SkillName,
     int Rating,
     string? Comment,
     DateTime CreatedAt);

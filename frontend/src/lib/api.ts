@@ -90,6 +90,15 @@ function readNumber(source: JsonRecord, ...keys: string[]) {
   return Number(readValue(source, ...keys));
 }
 
+function readNumberOr(source: JsonRecord, fallback: number, ...keys: string[]) {
+  const value = readOptionalValue<unknown>(source, ...keys);
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+
+  return Number(value);
+}
+
 function readBoolean(source: JsonRecord, ...keys: string[]) {
   return Boolean(readValue(source, ...keys));
 }
@@ -189,6 +198,7 @@ function normalizeSkillOffer(payload: unknown): SkillOffer {
     details: readNullableString(source, 'details'),
     isActive: readBoolean(source, 'isActive'),
     offerId: readString(source, 'offerId', 'offerID'),
+    skillEpithet: readNumberOr(source, 9, 'skillEpithet'),
     skillId: readString(source, 'skillId', 'skillID'),
     skillName: readString(source, 'skillName'),
     title: readString(source, 'title'),
@@ -204,6 +214,7 @@ function normalizeSkillRequest(payload: unknown): SkillRequest {
     authorPhotoUrl: readNullableString(source, 'authorPhotoUrl', 'authorPhotoURL'),
     details: readNullableString(source, 'details'),
     requestId: readString(source, 'requestId', 'requestID'),
+    skillEpithet: readNumberOr(source, 9, 'skillEpithet'),
     skillId: readString(source, 'skillId', 'skillID'),
     skillName: readString(source, 'skillName'),
     status: readNumber(source, 'status'),
@@ -385,6 +396,8 @@ function normalizeReviewFeed(payload: unknown): ReviewFeed {
         dealId: readString(review, 'dealId', 'dealID'),
         rating: readNumber(review, 'rating'),
         reviewId: readString(review, 'reviewId', 'reviewID'),
+        skillId: readNullableString(review, 'skillId', 'skillID'),
+        skillName: readNullableString(review, 'skillName'),
       };
     }),
     page: readNumber(source, 'page'),
@@ -607,12 +620,16 @@ export async function createSkill(
 
 export async function getSkillOffers(filters: {
   accountId?: string;
+  authorSearch?: string;
+  epithetSearch?: string;
+  excludeAccountId?: string;
   isActive?: boolean;
   page?: number;
   pageSize?: number;
   requireBarter?: boolean;
   search?: string;
   skillId?: string;
+  titleSearch?: string;
   viewerAccountId?: string;
   viewerHasSkill?: boolean;
 } = {}) {
@@ -666,7 +683,10 @@ export async function deleteSkillOffer(token: string, offerId: string, deletionR
 
 export async function getSkillRequests(filters: {
   accountId?: string;
+  authorSearch?: string;
   canHelp?: boolean;
+  excludeAccountId?: string;
+  epithetSearch?: string;
   helperAccountId?: string;
   page?: number;
   pageSize?: number;
@@ -674,6 +694,7 @@ export async function getSkillRequests(filters: {
   search?: string;
   skillId?: string;
   status?: number;
+  titleSearch?: string;
 } = {}) {
   const response = await request<unknown>(withQuery('/skillrequests', filters));
   return normalizePaged(response, normalizeSkillRequest);

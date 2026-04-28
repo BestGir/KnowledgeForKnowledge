@@ -43,6 +43,7 @@ export interface SkillOffer {
   authorPhotoUrl: string | null;
   skillId: string;
   skillName: string;
+  skillEpithet: number;
   title: string;
   details: string | null;
   isActive: boolean;
@@ -55,6 +56,7 @@ export interface SkillRequest {
   authorPhotoUrl: string | null;
   skillId: string;
   skillName: string;
+  skillEpithet: number;
   title: string;
   details: string | null;
   status: number;
@@ -178,6 +180,8 @@ export interface ReviewItem {
   dealId: string;
   authorId: string;
   authorName: string;
+  skillId: string | null;
+  skillName: string | null;
   rating: number;
   comment: string | null;
   createdAt: string;

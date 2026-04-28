@@ -57,6 +57,9 @@ export function AdminPage() {
   const [requestPage, setRequestPage] = useState(1);
   const [skillCatalogPage, setSkillCatalogPage] = useState(1);
   const [skillSearch, setSkillSearch] = useState('');
+  const [listingAuthorSearch, setListingAuthorSearch] = useState('');
+  const [listingTitleSearch, setListingTitleSearch] = useState('');
+  const [listingEpithetSearch, setListingEpithetSearch] = useState('');
   const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
   const [skillForm, setSkillForm] = useState({
     epithet: 0,
@@ -68,14 +71,32 @@ export function AdminPage() {
       ? getVerificationRequests(session.token, { page: verificationPage, pageSize: adminPageSize, status: verificationStatusPending })
       : Promise.resolve({ items: [], page: 1, pageSize: adminPageSize, totalCount: 0, totalPages: 0 }),
   );
-  const offersState = useAsyncData([session?.token, session?.isAdmin, offerPage, refreshToken], () =>
+  const offersState = useAsyncData(
+    [session?.token, session?.isAdmin, offerPage, listingAuthorSearch, listingTitleSearch, listingEpithetSearch, refreshToken],
+    () =>
     session?.token && session.isAdmin
-      ? getSkillOffers({ isActive: true, page: offerPage, pageSize: adminPageSize })
+      ? getSkillOffers({
+          authorSearch: listingAuthorSearch.trim() || undefined,
+          epithetSearch: listingEpithetSearch.trim() || undefined,
+          isActive: true,
+          page: offerPage,
+          pageSize: adminPageSize,
+          titleSearch: listingTitleSearch.trim() || undefined,
+        })
       : Promise.resolve({ items: [], page: 1, pageSize: adminPageSize, totalCount: 0, totalPages: 0 }),
   );
-  const requestsState = useAsyncData([session?.token, session?.isAdmin, requestPage, refreshToken], () =>
+  const requestsState = useAsyncData(
+    [session?.token, session?.isAdmin, requestPage, listingAuthorSearch, listingTitleSearch, listingEpithetSearch, refreshToken],
+    () =>
     session?.token && session.isAdmin
-      ? getSkillRequests({ page: requestPage, pageSize: adminPageSize, status: 0 })
+      ? getSkillRequests({
+          authorSearch: listingAuthorSearch.trim() || undefined,
+          epithetSearch: listingEpithetSearch.trim() || undefined,
+          page: requestPage,
+          pageSize: adminPageSize,
+          status: 0,
+          titleSearch: listingTitleSearch.trim() || undefined,
+        })
       : Promise.resolve({ items: [], page: 1, pageSize: adminPageSize, totalCount: 0, totalPages: 0 }),
   );
   const catalogState = useAsyncData([session?.token, session?.isAdmin, skillCatalogPage, skillSearch, refreshToken], () =>
@@ -86,7 +107,7 @@ export function AdminPage() {
 
   if (!isAuthenticated || !session) {
     return (
-      <Surface description="Для админки нужно войти в аккаунт администратора." title="Админка закрыта">
+      <Surface description="Для страницы администратора нужно войти в аккаунт администратора." title="Админ закрыт">
         <Link className="button button--primary" to="/auth">
           Войти
         </Link>
@@ -357,6 +378,50 @@ export function AdminPage() {
         </Surface>
       </div>
 
+      <Surface
+        description="Фильтры работают вместе: можно сузить список по автору, названию карточки и отрасли."
+        title="Поиск по карточкам"
+      >
+        <div className="admin-search-grid">
+          <label className="filter-cluster">
+            <span>ФИО автора</span>
+            <input
+              onChange={(event) => {
+                setListingAuthorSearch(event.target.value);
+                setOfferPage(1);
+                setRequestPage(1);
+              }}
+              placeholder="Например: Никита"
+              value={listingAuthorSearch}
+            />
+          </label>
+          <label className="filter-cluster">
+            <span>Название карточки</span>
+            <input
+              onChange={(event) => {
+                setListingTitleSearch(event.target.value);
+                setOfferPage(1);
+                setRequestPage(1);
+              }}
+              placeholder="Например: React"
+              value={listingTitleSearch}
+            />
+          </label>
+          <label className="filter-cluster">
+            <span>Отрасль</span>
+            <input
+              onChange={(event) => {
+                setListingEpithetSearch(event.target.value);
+                setOfferPage(1);
+                setRequestPage(1);
+              }}
+              placeholder="Например: ИТ, Дизайн"
+              value={listingEpithetSearch}
+            />
+          </label>
+        </div>
+      </Surface>
+
       <div className="content-grid content-grid--balanced">
         <Surface description="Админ может удалить чужое предложение из витрины, если карточка мусорная или нарушает правила." title="Предложения">
           {offersState.loading ? (
@@ -368,7 +433,9 @@ export function AdminPage() {
                   <div className="list-card-top">
                     <div>
                       <strong>{offer.title}</strong>
-                      <span className="meta-line">{offer.authorName} · {offer.skillName}</span>
+                      <span className="meta-line">
+                        {offer.authorName} · {offer.skillName} · {formatSkillEpithet(offer.skillEpithet)}
+                      </span>
                     </div>
                     <StatusTag label="Предложение" tone="accent" />
                   </div>
@@ -406,7 +473,9 @@ export function AdminPage() {
                   <div className="list-card-top">
                     <div>
                       <strong>{request.title}</strong>
-                      <span className="meta-line">{request.authorName} · {request.skillName}</span>
+                      <span className="meta-line">
+                        {request.authorName} · {request.skillName} · {formatSkillEpithet(request.skillEpithet)}
+                      </span>
                     </div>
                     <StatusTag label="Запрос" tone="warning" />
                   </div>

@@ -13,7 +13,11 @@ public record GetSkillRequestsQuery(
     bool? CanHelp,
     bool? RequireBarter,
     int Page = 1,
-    int PageSize = 20
+    int PageSize = 20,
+    string? AuthorSearch = null,
+    string? TitleSearch = null,
+    string? EpithetSearch = null,
+    Guid? ExcludeAccountID = null
 ) : IRequest<PagedResult<SkillRequestDto>>;
 
 public record SkillRequestDto(
@@ -23,6 +27,7 @@ public record SkillRequestDto(
     string? AuthorPhotoURL,
     Guid SkillID,
     string SkillName,
+    SkillEpithet SkillEpithet,
     string Title,
     string? Details,
     RequestStatus Status

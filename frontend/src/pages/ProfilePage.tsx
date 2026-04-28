@@ -5,6 +5,8 @@ import { useAuth } from '../auth/useAuth';
 import { Avatar, EmptyState, LoadingBlock, Notice, Pagination, StatusTag, Surface } from '../components/Ui';
 import {
   createApplication,
+  deleteSkillOffer,
+  deleteSkillRequest,
   getEducations,
   getProfile,
   getProofs,
@@ -23,6 +25,12 @@ const educationSectionPageSize = 6;
 const defaultApplicationMessage = 'Привет! Хочу обсудить карточку и договориться о формате общения.';
 
 type ComposerTarget = {
+  id: string;
+  kind: 'offer' | 'request';
+  title: string;
+};
+
+type AdminDeleteTarget = {
   id: string;
   kind: 'offer' | 'request';
   title: string;
@@ -60,6 +68,9 @@ export function ProfilePage() {
   const [applicationMessage, setApplicationMessage] = useState(defaultApplicationMessage);
   const [notice, setNotice] = useState<NoticeState>(null);
   const [isApplying, setIsApplying] = useState(false);
+  const [adminDeleteTarget, setAdminDeleteTarget] = useState<AdminDeleteTarget | null>(null);
+  const [adminDeletionReason, setAdminDeletionReason] = useState('');
+  const [isDeletingCard, setIsDeletingCard] = useState(false);
 
   const profileState = useAsyncData([accountId, session?.token ?? 'anonymous'], () => getProfile(accountId, session?.token));
   const offersState = useAsyncData([accountId, offerPage], () =>
@@ -96,8 +107,8 @@ export function ProfilePage() {
     educationPage * educationSectionPageSize,
   );
 
-  function getVerifiedProofsForSkill(skillId: string) {
-    return (proofsState.data ?? []).filter((proof) => proof.skillId === skillId && proof.isVerified);
+  function getProofsForSkill(skillId: string) {
+    return (proofsState.data ?? []).filter((proof) => proof.skillId === skillId);
   }
 
   function openComposer(target: ComposerTarget) {
@@ -118,6 +129,17 @@ export function ProfilePage() {
   function closeComposer() {
     setComposer(null);
     setApplicationMessage(defaultApplicationMessage);
+  }
+
+  function openAdminDelete(target: AdminDeleteTarget) {
+    setAdminDeleteTarget(target);
+    setAdminDeletionReason('');
+    setNotice(null);
+  }
+
+  function closeAdminDelete() {
+    setAdminDeleteTarget(null);
+    setAdminDeletionReason('');
   }
 
   async function handleApplicationSubmit(event: FormEvent<HTMLFormElement>, target: ComposerTarget) {
@@ -152,12 +174,54 @@ export function ProfilePage() {
     }
   }
 
+  async function handleAdminCardDelete(event: FormEvent<HTMLFormElement>, target: AdminDeleteTarget) {
+    event.preventDefault();
+
+    if (!session?.isAdmin) {
+      return;
+    }
+
+    setIsDeletingCard(true);
+    setNotice(null);
+
+    try {
+      const deletionReason = adminDeletionReason.trim() || undefined;
+      if (target.kind === 'offer') {
+        await deleteSkillOffer(session.token, target.id, deletionReason);
+      } else {
+        await deleteSkillRequest(session.token, target.id, deletionReason);
+      }
+
+      closeAdminDelete();
+      if (composer?.kind === target.kind && composer.id === target.id) {
+        closeComposer();
+      }
+      if (target.kind === 'offer') {
+        await offersState.reload();
+      } else {
+        await requestsState.reload();
+      }
+      setNotice({
+        message: `${target.kind === 'offer' ? 'Предложение' : 'Запрос'} «${target.title}» удалено.`,
+        tone: 'success',
+      });
+    } catch (error) {
+      setNotice({
+        message: error instanceof Error ? error.message : 'Не удалось удалить карточку.',
+        tone: 'danger',
+      });
+    } finally {
+      setIsDeletingCard(false);
+    }
+  }
+
   useEffect(() => {
     setSkillPage(1);
     setEducationPage(1);
     setOfferPage(1);
     setRequestPage(1);
     closeComposer();
+    closeAdminDelete();
   }, [accountId]);
 
   useEffect(() => {
@@ -186,6 +250,7 @@ export function ProfilePage() {
 
   useEffect(() => {
     closeComposer();
+    closeAdminDelete();
   }, [offerPage, requestPage]);
 
   if (!accountId) {
@@ -262,13 +327,19 @@ export function ProfilePage() {
               <div className="list-stack">
                 <div className="profile-card-grid">
                   {pagedSkills.map((skill) => {
-                    const verifiedProofs = getVerifiedProofsForSkill(skill.skillId);
+                    const skillProofs = getProofsForSkill(skill.skillId);
+                    const verifiedProofs = skillProofs.filter((proof) => proof.isVerified);
 
                     return (
                       <article className="list-card skill-card profile-card-grid__item" key={skill.skillId}>
                         <div className="list-card-top">
                           <strong>{skill.skillName}</strong>
-                          <StatusTag label={skill.isVerified ? 'Verified' : 'Draft'} tone={skill.isVerified ? 'success' : 'warning'} />
+                          {skillProofs.length > 0 ? (
+                            <StatusTag
+                              label={skill.isVerified ? 'Подтверждён' : 'Требует подтверждения'}
+                              tone={skill.isVerified ? 'success' : 'warning'}
+                            />
+                          ) : null}
                         </div>
                         <p className="meta-line">{formatSkillLevel(skill.level)}</p>
                         <p>{skill.description || 'Краткое описание не указано.'}</p>
@@ -362,6 +433,8 @@ export function ProfilePage() {
                 };
                 const composerOpen = composer?.kind === 'offer' && composer.id === offer.offerId;
                 const iHaveOfferSkill = viewerSkillIds.has(offer.skillId);
+                const adminOfferDeleteTarget: AdminDeleteTarget = { id: offer.offerId, kind: 'offer', title: offer.title };
+                const adminDeleteOpen = adminDeleteTarget?.kind === 'offer' && adminDeleteTarget.id === offer.offerId;
 
                 return (
                   <article className="list-card" key={offer.offerId}>
@@ -393,7 +466,41 @@ export function ProfilePage() {
                           Войти, чтобы откликнуться
                         </button>
                       )}
+                      {session?.isAdmin ? (
+                        <button
+                          className="button button--ghost"
+                          disabled={isDeletingCard}
+                          onClick={() =>
+                            adminDeleteOpen ? closeAdminDelete() : openAdminDelete(adminOfferDeleteTarget)
+                          }
+                          type="button"
+                        >
+                          {adminDeleteOpen ? 'Скрыть удаление' : 'Удалить'}
+                        </button>
+                      ) : null}
                     </div>
+
+                    {adminDeleteOpen ? (
+                      <form className="inline-composer" onSubmit={(event) => handleAdminCardDelete(event, adminOfferDeleteTarget)}>
+                        <label>
+                          <span>Причина удаления</span>
+                          <textarea
+                            onChange={(event) => setAdminDeletionReason(event.target.value)}
+                            placeholder="Например: карточка нарушает правила или содержит некорректные данные."
+                            rows={4}
+                            value={adminDeletionReason}
+                          />
+                        </label>
+                        <div className="button-row">
+                          <button className="button button--primary" disabled={isDeletingCard} type="submit">
+                            {isDeletingCard ? 'Удаляем...' : 'Удалить карточку'}
+                          </button>
+                          <button className="button button--ghost" disabled={isDeletingCard} onClick={closeAdminDelete} type="button">
+                            Отмена
+                          </button>
+                        </div>
+                      </form>
+                    ) : null}
 
                     {composerOpen ? (
                       <form className="inline-composer" onSubmit={(event) => handleApplicationSubmit(event, composerTarget)}>
@@ -444,6 +551,8 @@ export function ProfilePage() {
                 };
                 const composerOpen = composer?.kind === 'request' && composer.id === request.requestId;
                 const canHelpWithRequest = viewerSkillIds.has(request.skillId);
+                const adminRequestDeleteTarget: AdminDeleteTarget = { id: request.requestId, kind: 'request', title: request.title };
+                const adminDeleteOpen = adminDeleteTarget?.kind === 'request' && adminDeleteTarget.id === request.requestId;
 
                 return (
                   <article className="list-card" key={request.requestId}>
@@ -481,7 +590,41 @@ export function ProfilePage() {
                           Войти, чтобы предложить помощь
                         </button>
                       )}
+                      {session?.isAdmin ? (
+                        <button
+                          className="button button--ghost"
+                          disabled={isDeletingCard}
+                          onClick={() =>
+                            adminDeleteOpen ? closeAdminDelete() : openAdminDelete(adminRequestDeleteTarget)
+                          }
+                          type="button"
+                        >
+                          {adminDeleteOpen ? 'Скрыть удаление' : 'Удалить'}
+                        </button>
+                      ) : null}
                     </div>
+
+                    {adminDeleteOpen ? (
+                      <form className="inline-composer" onSubmit={(event) => handleAdminCardDelete(event, adminRequestDeleteTarget)}>
+                        <label>
+                          <span>Причина удаления</span>
+                          <textarea
+                            onChange={(event) => setAdminDeletionReason(event.target.value)}
+                            placeholder="Например: карточка нарушает правила или содержит некорректные данные."
+                            rows={4}
+                            value={adminDeletionReason}
+                          />
+                        </label>
+                        <div className="button-row">
+                          <button className="button button--primary" disabled={isDeletingCard} type="submit">
+                            {isDeletingCard ? 'Удаляем...' : 'Удалить карточку'}
+                          </button>
+                          <button className="button button--ghost" disabled={isDeletingCard} onClick={closeAdminDelete} type="button">
+                            Отмена
+                          </button>
+                        </div>
+                      </form>
+                    ) : null}
 
                     {composerOpen ? (
                       <form className="inline-composer" onSubmit={(event) => handleApplicationSubmit(event, composerTarget)}>
@@ -529,7 +672,10 @@ export function ProfilePage() {
               <article className="list-card" key={review.reviewId}>
                 <div className="list-card-top">
                   <strong>{review.authorName}</strong>
-                  <StatusTag label={`${review.rating} / 5`} tone="success" />
+                  <div className="button-row">
+                    {review.skillName ? <StatusTag label={review.skillName} tone="accent" /> : null}
+                    <StatusTag label={`${review.rating} / 5`} tone="success" />
+                  </div>
                 </div>
                 <p>{review.comment || 'Без текстового комментария.'}</p>
                 <p className="meta-line">{formatDate(review.createdAt)}</p>

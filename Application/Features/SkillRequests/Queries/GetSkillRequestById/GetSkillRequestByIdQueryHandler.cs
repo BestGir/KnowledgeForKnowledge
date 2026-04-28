@@ -28,6 +28,7 @@ public class GetSkillRequestByIdQueryHandler : IRequestHandler<GetSkillRequestBy
                 r.Account.UserProfile != null ? r.Account.UserProfile.PhotoURL : null,
                 r.SkillID,
                 r.SkillsCatalog.SkillName,
+                r.SkillsCatalog.Epithet,
                 r.Title,
                 r.Details,
                 r.Status))

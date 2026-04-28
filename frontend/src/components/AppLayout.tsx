@@ -45,7 +45,7 @@ export function AppLayout() {
           </NavLink>
           {session?.isAdmin ? (
             <NavLink className={navLinkClassName} to="/admin">
-              Админка
+              Админ
             </NavLink>
           ) : null}
         </nav>

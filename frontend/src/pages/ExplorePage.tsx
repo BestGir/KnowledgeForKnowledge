@@ -60,11 +60,20 @@ export function ExplorePage() {
     session && (offerSkillFilter !== 'all' || offerExchangeFilter === 'mutual') ? session.accountId : undefined;
   const requestViewerAccountId =
     session && (requestCapabilityFilter !== 'all' || requestExchangeFilter === 'mutual') ? session.accountId : undefined;
+  const excludeOwnAccountId = session?.accountId;
 
   const offersState = useAsyncData(
-    [appliedSkillId, offerPage, offerSkillFilter, offerExchangeFilter, offerViewerAccountId ?? 'anonymous'],
+    [
+      appliedSkillId,
+      offerPage,
+      offerSkillFilter,
+      offerExchangeFilter,
+      offerViewerAccountId ?? 'anonymous',
+      excludeOwnAccountId ?? 'anonymous',
+    ],
     () =>
       getSkillOffers({
+        excludeAccountId: excludeOwnAccountId,
         isActive: true,
         page: offerPage,
         pageSize: listingPageSize,
@@ -76,10 +85,18 @@ export function ExplorePage() {
   );
 
   const requestsState = useAsyncData(
-    [appliedSkillId, requestPage, requestCapabilityFilter, requestExchangeFilter, requestViewerAccountId ?? 'anonymous'],
+    [
+      appliedSkillId,
+      requestPage,
+      requestCapabilityFilter,
+      requestExchangeFilter,
+      requestViewerAccountId ?? 'anonymous',
+      excludeOwnAccountId ?? 'anonymous',
+    ],
     () =>
       getSkillRequests({
         canHelp: session && requestCapabilityFilter !== 'all' ? requestCapabilityFilter === 'can-help' : undefined,
+        excludeAccountId: excludeOwnAccountId,
         helperAccountId: requestViewerAccountId,
         page: requestPage,
         pageSize: listingPageSize,
@@ -325,7 +342,7 @@ export function ExplorePage() {
                 Взаимный обмен ищет авторов предложений, которые хотят изучить хотя бы один из твоих навыков.
               </small>
             )}
-            <OfferList />
+            {renderOfferList()}
           </>
         ) : (
           <>
@@ -351,14 +368,14 @@ export function ExplorePage() {
                 Взаимный обмен ищет авторов запросов, у которых есть навык, нужный тебе по открытому запросу.
               </small>
             )}
-            <RequestList />
+            {renderRequestList()}
           </>
         )}
       </Surface>
     </div>
   );
 
-  function OfferList() {
+  function renderOfferList() {
     if (offersState.loading && offersState.data === null) {
       return <LoadingBlock label="Подгружаем предложения..." />;
     }
@@ -417,7 +434,7 @@ export function ExplorePage() {
     );
   }
 
-  function RequestList() {
+  function renderRequestList() {
     if (requestsState.loading && requestsState.data === null) {
       return <LoadingBlock label="Подгружаем запросы..." />;
     }
