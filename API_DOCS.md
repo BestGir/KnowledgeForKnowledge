@@ -338,8 +338,12 @@ NotificationType:        0=NewApplication, 1=ApplicationAccepted, 2=ApplicationR
 |---|---|---|
 | `skillId` | guid | Фильтр по навыку |
 | `accountId` | guid | Фильтр по автору |
+| `excludeAccountId` | guid | Исключить карточки конкретного автора (например, свои) |
 | `isActive` | bool | Только активные / неактивные |
 | `search` | string | Поиск по заголовку, описанию, навыку |
+| `authorSearch` | string | Поиск по ФИО/логину автора |
+| `titleSearch` | string | Поиск по заголовку карточки |
+| `epithetSearch` | string | Поиск по сфере навыка (IT, Дизайн и т.д.) |
 | `viewerAccountId` | guid | ID смотрящего — для barter-фильтрации |
 | `viewerHasSkill` | bool | `true` — только офферы, где смотрящий может помочь (есть нужный навык) |
 | `requireBarter` | bool | `true` — только офферы, у автора которых есть запросы на навыки смотрящего |
@@ -410,14 +414,15 @@ NotificationType:        0=NewApplication, 1=ApplicationAccepted, 2=ApplicationR
 
 ### `DELETE /api/skilloffers/{id}` 🔒
 Удалить предложение.  
-Пользователь — только своё. Admin — любое, с уведомлением владельца в Telegram.
+Пользователь — только своё. Admin — любое.  
+Уведомление в Telegram отправляется, если Admin удаляет чужую карточку и у владельца привязан Telegram.
 
 **Body (опциональный):**
 ```json
 { "deletionReason": "Нарушение правил платформы" }
 ```
 
-> Body необязателен. Если передан `deletionReason` и удаляет Admin — владелец получит сообщение в Telegram.
+> Body необязателен. Если передан `deletionReason` и удаляет Admin чужую карточку — владелец получит сообщение в Telegram.
 
 **Ответ 204**.
 
@@ -436,8 +441,12 @@ NotificationType:        0=NewApplication, 1=ApplicationAccepted, 2=ApplicationR
 |---|---|---|
 | `skillId` | guid | Фильтр по навыку |
 | `accountId` | guid | Фильтр по автору |
+| `excludeAccountId` | guid | Исключить карточки конкретного автора (например, свои) |
 | `status` | int | Фильтр по статусу (`RequestStatus`) |
 | `search` | string | Поиск по заголовку и описанию |
+| `authorSearch` | string | Поиск по ФИО/логину автора |
+| `titleSearch` | string | Поиск по заголовку карточки |
+| `epithetSearch` | string | Поиск по сфере навыка (IT, Дизайн и т.д.) |
 | `helperAccountId` | guid | ID помощника — для barter-фильтрации |
 | `canHelp` | bool | `true` — только запросы, где помощник имеет нужный навык |
 | `requireBarter` | bool | `true` — только запросы, у автора которых есть навыки, нужные помощнику |
@@ -504,12 +513,15 @@ NotificationType:        0=NewApplication, 1=ApplicationAccepted, 2=ApplicationR
 
 ### `DELETE /api/skillrequests/{id}` 🔒
 Удалить запрос.  
-Пользователь — только свой. Admin — любой, с уведомлением владельца в Telegram.
+Пользователь — только свой. Admin — любой.  
+Уведомление в Telegram отправляется, если Admin удаляет чужую карточку и у владельца привязан Telegram.
 
 **Body (опциональный):**
 ```json
 { "deletionReason": "Нарушение правил платформы" }
 ```
+
+> Body необязателен. Если передан `deletionReason` и удаляет Admin чужую карточку — владелец получит сообщение в Telegram.
 
 **Ответ 204**.
 
@@ -992,12 +1004,15 @@ GET /api/skilloffers?requireBarter=true&viewerAccountId=uuid
 
 GET /api/skillrequests?canHelp=true&helperAccountId=uuid
     → запросы, в которых вы можете помочь (у вас есть нужный навык)
+
+GET /api/skilloffers?excludeAccountId=uuid
+    → лента без карточек указанного автора (например, чтобы скрыть собственные карточки)
 ```
 
 ### Модерация (Admin)
 ```
 DELETE /api/skilloffers/{id}  { "deletionReason": "Нарушение" }
-    → владелец получает уведомление в Telegram
+    → если удаляется чужая карточка, владелец получает уведомление в Telegram
 
 PUT /api/verification/{id}/review  { "status": 2, "rejectionReason": "Недостаточно документов" }
 ```
